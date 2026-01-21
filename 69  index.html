@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f2027;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.light {
+    background: #f4f4f4;
+    color: black;
+}
+
+.container {
+    text-align: center;
+    position: relative;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    gap: 10px;
+    margin: 20px auto;
+    position: relative;
+}
+
+.cell {
+    width: 100px;
+    height: 100px;
+    background: #203a43;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    cursor: pointer;
+    border-radius: 10px;
+}
+
+.light .cell {
+    background: #ddd;
+}
+
+button {
+    padding: 10px 18px;
+    margin: 6px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.hidden { display: none; }
+
+.status {
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+.win { color: #00ffcc; }
+.lose { color: #ff4c4c; }
+
+.win-line {
+    position: absolute;
+    width: 300px;
+    height: 5px;
+    background: #00ffcc;
+    top: 50%;
+    left: 50%;
+    transform-origin: left center;
+    transform: translate(-50%, -50%) scaleX(0);
+    animation: draw 0.6s forwards;
+}
+
+@keyframes draw {
+    to { transform: translate(-50%, -50%) scaleX(1); }
+}
+
+@keyframes fall {
+    to { transform: translateY(100vh) rotate(360deg); }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- START SCREEN -->
+<div id="start">
+    <h1>Tic Tac Toe</h1>
+    <p>Made by Aditya Tiwari</p>
+    <button onclick="startModes()">Begin</button>
+</div>
+
+<!-- MODE SCREEN -->
+<div id="modes" class="hidden">
+    <h3>Select Mode</h3>
+    <button onclick="startGame('computer')">Vs Computer</button>
+    <button onclick="startGame('multi')">Multiplayer</button>
+    <p>Difficulty</p>
+    <button onclick="difficulty='easy'">Easy</button>
+    <button onclick="difficulty='hard'">Hard 😈</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game" class="hidden">
+    <button onclick="toggleTheme()">🌙 / ☀️</button>
+    <div class="board" id="board"></div>
+    <div class="status" id="status"></div>
+    <p>Player X: <span id="sx">0</span> | Player O: <span id="so">0</span></p>
+    <button onclick="resetGame()">Restart</button>
+</div>
+
+</div>
+
+<script>
+let board = ["","","","","","","","",""];
+let current = "X";
+let active = true;
+let mode = "";
+let difficulty = "hard";
+let scoreX = 0, scoreO = 0;
+let winLine;
+
+const wins = [
+[0,1,2],[3,4,5],[6,7,8],
+[0,3,6],[1,4,7],[2,5,8],
+[0,4,8],[2,4,6]
+];
+
+const taunts = [
+"Too easy 😏",
+"I saw that coming 😎",
+"Try again human 🤖",
+"You can do better 😈"
+];
+
+const winSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3");
+const loseSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-failure-arcade-alert-notification-240.mp3");
+const clickSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3");
+
+function startModes(){
+    start.classList.add("hidden");
+    modes.classList.remove("hidden");
+}
+
+function startGame(m){
+    mode = m;
+    modes.classList.add("hidden");
+    game.classList.remove("hidden");
+    drawBoard();
+    status.textContent = "Player X Turn";
+}
+
+function drawBoard(){
+    board = ["","","","","","","","",""];
+    current = "X";
+    active = true;
+    boardDiv.innerHTML = "";
+    if(winLine) winLine.remove();
+
+    board.forEach((_,i)=>{
+        let c = document.createElement("div");
+        c.className = "cell";
+        c.onclick = ()=>play(i);
+        boardDiv.appendChild(c);
+    });
+}
+
+const boardDiv = document.getElementById("board");
+const status = document.getElementById("status");
+
+function play(i){
+    if(!active || board[i]) return;
+    clickSound.play();
+    board[i] = current;
+    boardDiv.children[i].textContent = current;
+
+    if(checkWin(current)){
+        showResult(current);
+        return;
+    }
+
+    if(!board.includes("")){
+        status.textContent = "Draw!";
+        active = false;
+        return;
+    }
+
+    current = current==="X"?"O":"X";
+    status.textContent = "Player " + current + " Turn";
+
+    if(mode==="computer" && current==="O"){
+        setTimeout(()=>{
+            difficulty==="easy"?easyAI():hardAI();
+        },400);
+    }
+}
+
+function easyAI(){
+    let empty = board.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+    play(empty[Math.floor(Math.random()*empty.length)]);
+}
+
+function hardAI(){
+    let best = -Infinity, move;
+    for(let i=0;i<9;i++){
+        if(board[i]===""){
+            board[i]="O";
+            let s = minimax(board,0,false);
+            board[i]="";
+            if(s>best){best=s;move=i;}
+        }
+    }
+    status.textContent = taunts[Math.floor(Math.random()*taunts.length)];
+    play(move);
+}
+
+function minimax(b,d,max){
+    if(checkStatic(b,"O")) return 10-d;
+    if(checkStatic(b,"X")) return d-10;
+    if(!b.includes("")) return 0;
+
+    if(max){
+        let best=-Infinity;
+        for(let i=0;i<9;i++){
+            if(b[i]===""){
+                b[i]="O";
+                best=Math.max(best,minimax(b,d+1,false));
+                b[i]="";
+            }
+        }
+        return best;
+    } else {
+        let best=Infinity;
+        for(let i=0;i<9;i++){
+            if(b[i]===""){
+                b[i]="X";
+                best=Math.min(best,minimax(b,d+1,true));
+                b[i]="";
+            }
+        }
+        return best;
+    }
+}
+
+function checkStatic(b,p){
+    return wins.some(w=>w.every(i=>b[i]===p));
+}
+
+function checkWin(p){
+    for(let w of wins){
+        if(w.every(i=>board[i]===p)){
+            drawLine(w);
+            return true;
+        }
+    }
+    return false;
+}
+
+function drawLine(w){
+    winLine = document.createElement("div");
+    winLine.className="win-line";
+    game.appendChild(winLine);
+}
+
+function showResult(p){
+    active=false;
+    if(navigator.vibrate) navigator.vibrate(210);
+
+    if(p==="X"){
+        scoreX++; sx.textContent=scoreX;
+        status.textContent="Winner Winner Chicken Dinner 🐔🍗";
+        status.className="status win";
+        winSound.play();
+        confetti();
+    } else {
+        scoreO++; so.textContent=scoreO;
+        status.textContent="Loser Loser NO Dinner ❌";
+        status.className="status lose";
+        loseSound.play();
+    }
+}
+
+function resetGame(){
+    status.className="status";
+    drawBoard();
+    status.textContent="Player X Turn";
+}
+
+function toggleTheme(){
+    document.body.classList.toggle("light");
+}
+
+function confetti(){
+    for(let i=0;i<30;i++){
+        let d=document.createElement("div");
+        d.style.position="fixed";
+        d.style.left=Math.random()*100+"vw";
+        d.style.top="-10px";
+        d.style.width="8px";
+        d.style.height="8px";
+        d.style.background=`hsl(${Math.random()*360},100%,50%)`;
+        d.style.animation="fall 2s linear";
+        document.body.appendChild(d);
+        setTimeout(()=>d.remove(),2000);
+    }
+}
+</script>
+</body>
+</html>
